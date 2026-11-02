@@ -1,0 +1,23 @@
+# Python virtual environment
+.venv/
+
+# Python cache files
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# Environment variables and secrets
+.env
+.env.*
+
+# VS Code settings
+.vscode/
+
+# Generated data and evaluation outputs
+data/output/*
+!data/output/.gitkeep
+
+# SQLite databases
+*.db
+*.sqlite
+*.sqlite3
