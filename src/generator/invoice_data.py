@@ -40,7 +40,8 @@ def generate_invoices(connection):
             ON sl.order_line_id = ol.order_line_id
         JOIN shipments s
             ON s.shipment_id = sl.shipment_id
-        WHERE s.status IN ('shipped', 'delivered')
+        WHERE o.status IN ('fulfilled', 'closed')
+            AND s.status IN ('shipped', 'delivered')
         GROUP BY
             o.order_id,
             o.account_id,

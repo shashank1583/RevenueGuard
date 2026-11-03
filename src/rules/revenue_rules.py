@@ -221,42 +221,62 @@ def detect_invalid_status_transitions(connection):
 
 
 def detect_open_disputes(connection):
-    """RG005: Find open disputes requiring receivables review."""
-
     query = """
         SELECT
+            d.dispute_id,
+            d.invoice_id,
+            d.amount AS disputed_amount,
+            d.status,
+            i.status AS invoice_status,
+            COALESCE(SUM(ra.adjusted_amount), 0)
+                AS adjusted_amount
+        FROM disputes d
+        JOIN invoices i
+            ON i.invoice_id = d.invoice_id
+        LEFT JOIN receivable_adjustments ra
+            ON ra.dispute_id = d.dispute_id
+        WHERE d.status IN ('open', 'under_review')
+        GROUP BY
             d.dispute_id,
             d.invoice_id,
             d.amount,
             d.status,
             i.status
-        FROM disputes d
-        JOIN invoices i
-            ON i.invoice_id = d.invoice_id
-        WHERE d.status IN ('open', 'under_review')
+        HAVING COALESCE(SUM(ra.adjusted_amount), 0) < d.amount
     """
 
     rows = connection.execute(query).fetchall()
 
-    return [
-        {
+    findings = []
+
+    for row in rows:
+        (
+            dispute_id,
+            invoice_id,
+            disputed_amount,
+            dispute_status,
+            invoice_status,
+            adjusted_amount,
+        ) = row
+
+        findings.append({
             "rule_id": "RG005",
             "entity_type": "invoice",
-            "entity_id": row[1],
+            "entity_id": invoice_id,
             "description": (
-                "Invoice has an open or under-review dispute "
-                "requiring receivables review"
+                "Active dispute has missing or insufficient "
+                "receivables adjustment."
             ),
             "details": {
-                "dispute_id": row[0],
-                "disputed_amount": row[2],
-                "dispute_status": row[3],
-                "invoice_status": row[4],
+                "dispute_id": dispute_id,
+                "disputed_amount": disputed_amount,
+                "adjusted_amount": adjusted_amount,
+                "dispute_status": dispute_status,
+                "invoice_status": invoice_status,
             },
-        }
-        for row in rows
-    ]
+        })
 
+    return findings
 
 def run_all_rules(connection):
     """Execute all RevenueGuard detection rules."""

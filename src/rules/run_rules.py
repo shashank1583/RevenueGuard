@@ -1,3 +1,4 @@
+import argparse
 import json
 import sqlite3
 from pathlib import Path
@@ -6,24 +7,47 @@ from src.rules.revenue_rules import run_all_rules
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
-DB_PATH = PROJECT_ROOT / "data" / "output" / "revenueguard.db"
+DEFAULT_DB_PATH = PROJECT_ROOT / "data" / "output" / "revenueguard.db"
 OUTPUT_DIR = PROJECT_ROOT / "data" / "output"
-OUTPUT_PATH = OUTPUT_DIR / "findings.json"
 
 
 def main():
-    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+    parser = argparse.ArgumentParser(
+        description="Run RevenueGuard detection rules."
+    )
 
-    with sqlite3.connect(DB_PATH) as connection:
+    parser.add_argument(
+        "--db",
+        type=Path,
+        default=DEFAULT_DB_PATH,
+        help="Path to the SQLite database.",
+    )
+
+    parser.add_argument(
+        "--output",
+        type=Path,
+        default=OUTPUT_DIR / "findings.json",
+        help="Path to save detection findings.",
+    )
+
+    args = parser.parse_args()
+
+    if not args.db.exists():
+        raise FileNotFoundError(f"Database not found: {args.db}")
+
+    args.output.parent.mkdir(parents=True, exist_ok=True)
+
+    with sqlite3.connect(args.db) as connection:
         findings = run_all_rules(connection)
 
-    OUTPUT_PATH.write_text(
+    args.output.write_text(
         json.dumps(findings, indent=2),
         encoding="utf-8",
     )
 
+    print(f"Database: {args.db}")
     print(f"Total findings: {len(findings)}")
-    print(f"Results saved to: {OUTPUT_PATH}")
+    print(f"Results saved to: {args.output}")
 
     counts = {}
 

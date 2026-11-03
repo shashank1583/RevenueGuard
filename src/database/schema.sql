@@ -127,6 +127,17 @@ CREATE TABLE IF NOT EXISTS disputes (
     CHECK (resolved_at IS NULL OR resolved_at >= opened_at)
 );
 
+CREATE TABLE IF NOT EXISTS receivable_adjustments (
+    adjustment_id TEXT PRIMARY KEY,
+    dispute_id TEXT NOT NULL UNIQUE,
+    invoice_id TEXT NOT NULL,
+    adjusted_amount REAL NOT NULL CHECK (adjusted_amount > 0),
+    adjustment_date TEXT NOT NULL,
+
+    FOREIGN KEY (dispute_id) REFERENCES disputes(dispute_id),
+    FOREIGN KEY (invoice_id) REFERENCES invoices(invoice_id)
+);
+
 CREATE TABLE IF NOT EXISTS status_events (
     event_id INTEGER PRIMARY KEY,
     entity_type TEXT NOT NULL CHECK (

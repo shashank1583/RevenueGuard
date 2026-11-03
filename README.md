@@ -2,86 +2,135 @@
 
 ## 1. Overview
 
-RevenueGuard is a Python-based revenue monitoring system that uses a relational database and rule-based detection to identify potential revenue leakage, billing inconsistencies, payment allocation issues, and workflow anomalies.
+RevenueGuard is a Python-based revenue monitoring and anomaly detection system designed to identify potential revenue leakage, billing inconsistencies, payment allocation issues, and business workflow anomalies.
 
-The project generates synthetic business data, stores it in SQLite, and executes SQL-based detection rules to identify records that may require further investigation.
+The system simulates an end-to-end Order-to-Cash (O2C) process using synthetic business data stored in a relational SQLite database.
 
-The system is designed to demonstrate database design, data generation, business-rule implementation, testing, and evaluation.
+It applies SQL-based detection rules to identify suspicious transactions and inconsistencies across sales orders, shipments, invoices, payments, and customer disputes.
+
+The project demonstrates relational database design, synthetic data generation, business-rule implementation, automated testing, controlled anomaly injection, and evaluation.
 
 ## 2. Key Features
 
-- Relational SQLite database with 13 tables.
+- Relational SQLite database with 14 tables.
 - Deterministic synthetic business data generation.
-- Quote-to-order-to-shipment-to-invoice data flow.
-- Payment and payment-allocation tracking.
-- Dispute tracking and status-event history.
-- Five rule-based revenue checks.
-- Unit tests for all five detection rules.
-- Controlled anomaly testing.
+- End-to-end quote-to-order-to-shipment-to-invoice workflow.
+- Payment processing and invoice allocation tracking.
+- Customer dispute and receivables adjustment tracking.
+- Five SQL-based revenue anomaly detection rules.
+- Lifecycle status transition validation.
+- Controlled anomaly injection for all five detection rules.
+- Ground-truth-based controlled evaluation.
+- Database integrity and foreign-key validation.
+- Financial and quantity reconciliation checks.
 - JSON and CSV evaluation reports.
+- Automated unit testing with pytest.
 
 ## 3. Technology Stack
 
-- **Language:** Python
-- **Database:** SQLite
-- **Data processing:** pandas
-- **Data validation:** pydantic
-- **Testing:** pytest
-- **Output formats:** JSON and CSV
+| Component | Technology |
+|---|---|
+| Programming Language | Python |
+| Database | SQLite |
+| Data Processing | pandas |
+| Data Validation | pydantic |
+| Testing | pytest |
+| Evaluation Output | JSON, CSV |
+| Version Control | Git, GitHub |
 
 ## 4. Detection Rules
+
+RevenueGuard currently implements five detection rules.
 
 | Rule ID | Rule Name | Description |
 |---|---|---|
 | RG001 | Invoice Overbilling | Identifies invoice-line quantities exceeding the corresponding shipped quantities. |
 | RG002 | Payment Overallocation | Identifies payments whose total allocated amount exceeds the payment amount. |
-| RG003 | Closed Orders with Unpaid Invoices | Identifies closed orders associated with outstanding invoice balances. |
-| RG004 | Invalid Status Transitions | Identifies recorded status transitions that violate the configured transition rules. |
-| RG005 | Open Disputes | Identifies disputes that remain open or under review. |
+| RG003 | Closed Orders with Unpaid Invoices | Identifies closed sales orders with outstanding invoice balances. |
+| RG004 | Invalid Status Transitions | Identifies recorded status transitions that violate configured lifecycle rules. |
+| RG005 | Missing Receivables Adjustment | Identifies active disputes with missing or insufficient receivables adjustments. |
 
-**Important:** These rules identify potential issues for investigation. A finding does not automatically prove revenue leakage, fraud, or financial loss.
+**Important:** Detection findings represent potential business anomalies requiring investigation. They do not automatically establish financial loss, fraud, or misconduct.
 
-## 5. Project Structure
+## 5. Database Design
+
+The database contains 14 relational tables:
+
+| Category | Tables |
+|---|---|
+| Customer Management | accounts |
+| Quotation Management | quotes, quote_lines |
+| Sales Management | sales_orders, order_lines |
+| Shipment Management | shipments, shipment_lines |
+| Billing | invoices, invoice_lines |
+| Payments | payments, payment_allocations |
+| Dispute Management | disputes, receivable_adjustments |
+| Audit History | status_events |
+
+The database uses primary keys, foreign keys, unique constraints, CHECK constraints, and indexes to maintain structural consistency.
+
+### Data Dictionary
+
+The detailed database schema, column descriptions, relationships, constraints, and indexes are documented in:
+
+`docs/data_dictionary.md`
+
+## 6. Project Structure
 
 ```text
 RevenueGuard/
-├── data/
-│   ├── input/
-│   └── output/
-├── docs/
-│   ├── design_decisions.md
-│   └── prompt_history.md
-├── scripts/
-│   └── test_detection_rules.py
-├── src/
-│   ├── database/
-│   │   ├── init_db.py
-│   │   └── schema.sql
-│   ├── evaluation/
-│   │   └── evaluate.py
-│   ├── generator/
-│   │   ├── master_data.py
-│   │   ├── order_data.py
-│   │   ├── shipment_data.py
-│   │   ├── invoice_data.py
-│   │   ├── payment_data.py
-│   │   └── dispute_data.py
-│   └── rules/
-│       ├── revenue_rules.py
-│       └── run_rules.py
-├── tests/
-│   └── test_revenue_rules.py
-├── .gitignore
-├── requirements.txt
-└── README.md
+|-- data/
+|   |-- input/
+|   |-- output/                  # Generated files; excluded from Git
+|   |-- ground_truth.csv
+|
+|-- docs/
+|   |-- data_dictionary.md
+|   |-- design_decisions.md
+|   |-- prompt_history.md
+|
+|-- scripts/
+|   |-- create_evaluation_db.py
+|   |-- inject_evaluation_anomalies.py
+|   |-- reconcile_data.py
+|   |-- test_detection_rules.py
+|   |-- validate_database.py
+|
+|-- src/
+|   |-- database/
+|   |   |-- init_db.py
+|   |   |-- schema.sql
+|   |
+|   |-- evaluation/
+|   |   |-- evaluate.py
+|   |   |-- evaluate_controlled_cases.py
+|   |
+|   |-- generator/
+|   |   |-- master_data.py
+|   |   |-- order_data.py
+|   |   |-- shipment_data.py
+|   |   |-- invoice_data.py
+|   |   |-- payment_data.py
+|   |   |-- dispute_data.py
+|   |
+|   |-- rules/
+|       |-- revenue_rules.py
+|       |-- run_rules.py
+|
+|-- tests/
+|   |-- test_revenue_rules.py
+|
+|-- .gitignore
+|-- requirements.txt
+|-- README.md
 ```
 
-## 6. Setup
+## 7. Setup
 
 ### Prerequisites
 
-- Python 3.11 or later is recommended.
-- Git is recommended for version control.
+- Python 3.11 or later.
+- Git.
 
 The project was developed and tested using Python 3.13.7.
 
@@ -100,23 +149,23 @@ python -m venv .venv
 python -m pip install -r requirements.txt
 ```
 
-## 7. Initialize the Database
+## 8. Initialize the Database
 
-Create the SQLite database and its tables:
+Initialize the SQLite database:
 
 ```powershell
 python -m src.database.init_db
 ```
 
-The generated database is stored at:
+The database is created at:
 
 ```text
 data/output/revenueguard.db
 ```
 
-## 8. Generate Synthetic Data
+## 9. Generate Synthetic Data
 
-Run the generators in the following order so that related records are created before dependent records.
+Run the data generators in the following order:
 
 ```powershell
 python -m src.generator.master_data
@@ -127,13 +176,15 @@ python -m src.generator.payment_data
 python -m src.generator.dispute_data
 ```
 
-The generators create synthetic accounts, quotes, orders, shipments, invoices, payments, disputes, and related records.
+The generators create synthetic customer accounts, quotes, sales orders, shipments, invoices, payments, and disputes.
 
 Several generators use fixed random seeds to support reproducible data generation.
 
-**Note:** Initialize a fresh database before regenerating the complete dataset. Re-running generators against an existing database may produce duplicate records or other inconsistencies, depending on their implementation.
+Invoice generation is restricted to fulfilled or closed orders and uses actual shipped or delivered quantities.
 
-## 9. Run Revenue Detection Rules
+**Note:** Initialize a fresh database before regenerating the complete dataset. Generators include checks to prevent accidental duplicate generation.
+
+## 10. Run Revenue Detection Rules
 
 Execute all five detection rules:
 
@@ -141,56 +192,165 @@ Execute all five detection rules:
 python -m src.rules.run_rules
 ```
 
-The generated findings are written to:
+Findings are saved to:
 
 ```text
 data/output/findings.json
 ```
 
-Each finding represents a record identified by a detection rule for further review.
-
-## 10. Run Tests
-
-### Unit tests
-
-Run the unit tests for the five detection rules:
+A custom database and output path can also be supplied:
 
 ```powershell
-python -m pytest tests/test_revenue_rules.py -v
+python -m src.rules.run_rules --db data/output/revenueguard_evaluation.db --output data/output/evaluation_findings.json
 ```
 
-The current test suite contains five tests covering RG001 through RG005.
+Each finding includes its rule identifier, affected entity, description, and supporting details.
 
-### Controlled anomaly tests
+## 11. Testing
+
+### Unit Tests
 
 Run:
 
 ```powershell
-python scripts/test_detection_rules.py
+python -m pytest -v
 ```
 
-This script copies the generated database, injects controlled anomalies for RG001, RG002, and RG004, and checks whether the corresponding rules appear in the findings.
+The current test suite contains seven passing tests covering:
 
-The script operates on a test copy rather than intentionally modifying the original database.
+- Invoice overbilling.
+- Payment overallocation.
+- Closed orders with outstanding invoices.
+- Invalid status transitions.
+- Active disputes without receivables adjustments.
+- Partially adjusted disputes.
+- Fully adjusted disputes.
 
-## 11. Evaluate the Dataset
+**Latest result: 7 passed.**
+
+### Controlled Anomaly Testing
+
+The project supports controlled anomaly injection for all five detection rules.
+
+First, create a separate evaluation database:
+
+```powershell
+python scripts/create_evaluation_db.py
+```
+
+Inject controlled anomalies:
+
+```powershell
+python scripts/inject_evaluation_anomalies.py
+```
+
+Run the detection rules:
+
+```powershell
+python -m src.rules.run_rules --db data/output/revenueguard_evaluation.db --output data/output/evaluation_findings.json
+```
+
+The evaluation database is kept separate from the original generated database.
+
+The controlled scenarios cover:
+
+- RG001: Invoice overbilling.
+- RG002: Payment overallocation.
+- RG003: Closed order with an outstanding invoice.
+- RG004: Invalid status transition.
+- RG005: Active dispute without a receivables adjustment.
+
+The expected results are maintained in:
+
+`data/ground_truth.csv`
+
+### Controlled Evaluation
 
 Run:
 
 ```powershell
-python -m src.evaluation.evaluate
+python -m src.evaluation.evaluate_controlled_cases
 ```
 
-The evaluation produces:
+Generated reports:
 
 ```text
-data/output/evaluation_summary.json
-data/output/evaluation_by_rule.csv
+data/output/controlled_evaluation_summary.json
+data/output/controlled_evaluation_by_case.csv
 ```
 
-These files summarize the number of findings produced by each rule.
+### Controlled Evaluation Results
 
-### Current baseline results
+| Metric | Result |
+|---|---:|
+| Controlled test cases | 5 |
+| Correctly detected cases | 5 |
+| Missed cases | 0 |
+| Detection rate | 100% |
+
+All five injected anomaly scenarios were detected against their expected rule and entity identifiers.
+
+Precision and F1-score are not reported because complete positive and negative ground-truth labels are not available for the entire dataset.
+
+The 100% detection rate applies only to the five controlled scenarios. It should not be interpreted as production-wide model accuracy.
+
+## 12. Database Validation
+
+Run:
+
+```powershell
+python -m scripts.validate_database
+```
+
+This checks:
+
+- SQLite database integrity.
+- Foreign-key violations.
+- Missing values in required columns.
+- Table and record counts.
+
+### Latest Validation Results
+
+| Metric | Result |
+|---|---:|
+| Database tables | 14 |
+| Total records | 184,182 |
+| SQLite integrity | PASS |
+| Foreign-key violations | 0 |
+| Required-field violations | 0 |
+| Overall status | PASS |
+
+The record count represents the controlled evaluation database after anomaly injection.
+
+## 13. Financial and Quantity Reconciliation
+
+Run:
+
+```powershell
+python -m scripts.reconcile_data
+```
+
+The reconciliation script checks:
+
+- Shipped quantities against ordered quantities.
+- Invoiced quantities against shipped quantities.
+- Payment allocations against payment amounts.
+
+### Latest Reconciliation Results
+
+| Check | Total Violations | Expected Test Anomalies | Unexpected Violations | Status |
+|---|---:|---:|---:|---|
+| Shipment vs Ordered Quantity | 0 | 0 | 0 | PASS |
+| Invoice vs Shipped Quantity | 1 | 1 | 0 | PASS |
+| Payment Allocation | 1 | 1 | 0 | PASS |
+
+Both reported financial/quantity violations correspond to deliberately injected evaluation scenarios.
+
+No unexpected violations were identified by these checks.
+
+## 14. Baseline Evaluation Results
+
+The original generated database produced the following baseline findings before controlled anomaly injection:
 
 | Rule ID | Findings |
 |---|---:|
@@ -201,60 +361,57 @@ These files summarize the number of findings produced by each rule.
 | RG005 | 650 |
 | **Total** | **2,959** |
 
-These figures describe the current generated dataset and may change when the dataset or detection logic changes.
+These are baseline detection counts, not accuracy measurements.
 
-### Evaluation limitations
+The controlled evaluation database is a separate copy containing additional adjustments and deliberately injected anomalies. Its findings should not be confused with the baseline results.
 
-Finding counts alone do not establish detection accuracy.
+## 15. Design Decisions
 
-Reliable precision, recall, and F1-score calculations require labelled evaluation cases identifying which records genuinely contain anomalies and which records are legitimate.
+Key design decisions include:
 
-A zero finding count for a rule does not, by itself, prove that the rule is ineffective. It may indicate that the current dataset contains no matching cases.
+- SQLite was selected for lightweight relational storage without requiring a separate database server.
+- Business entities are separated into related tables.
+- Detection rules are implemented independently from data generation.
+- Synthetic data is used to avoid dependence on real financial records.
+- Controlled anomaly injection provides known test scenarios.
+- Ground truth is maintained separately from detection results.
+- Structural validation and business reconciliation are performed independently.
 
-## 12. Design Decisions
+For additional details, see:
 
-The project uses SQLite because it provides a lightweight relational database that can be initialized locally without a separate database server.
+`docs/design_decisions.md`
 
-The data model separates business entities into related tables and uses foreign keys to represent relationships between records.
-
-Detection rules are implemented separately from data generation so that the same rules can be evaluated against generated data and controlled test cases.
-
-For additional implementation details and trade-offs, see:
-
-```text
-docs/design_decisions.md
-```
-
-## 13. Limitations
+## 16. Limitations
 
 - The project uses synthetic data rather than real financial records.
-- Detection is based on configured business rules rather than a trained machine-learning model.
-- Findings require business review before being treated as confirmed anomalies.
-- The baseline finding counts are not ground-truth accuracy metrics.
-- Controlled anomaly testing currently covers RG001, RG002, and RG004.
-- The current test suite is not a substitute for production integration, performance, security, and financial reconciliation testing.
+- Detection is based on predefined business rules, not a trained machine-learning model.
+- Findings require business review before being considered confirmed anomalies.
+- Global precision and F1-score are unavailable because the full dataset does not have complete ground-truth labels.
+- Monetary values currently use SQLite REAL rather than integer minor units or a decimal representation.
+- Refund reversals and more advanced receivables accounting workflows are not fully modelled.
+- The project is a demonstration implementation and has not been validated for production financial operations.
 
-## 14. AI-Assisted Development
+## 17. AI-Assisted Development
 
-AI tools were used during development. The project maintains a prompt-history document to support transparency.
+AI tools were used during development for implementation assistance, debugging, testing, and documentation.
 
-See:
+Representative development prompts and AI-assisted workflow notes are maintained in:
 
-```text
-docs/prompt_history.md
-```
+`docs/prompt_history.md`
 
-The prompt history should be updated to include the actual prompts used with AI tools during development.
+## 18. Future Improvements
 
-## 15. Future Improvements
+- Expand ground-truth coverage beyond the five controlled scenarios.
+- Introduce comprehensive positive and negative evaluation labels.
+- Calculate precision, recall, and F1-score against a fully labelled dataset.
+- Use integer minor units or decimal arithmetic for financial calculations.
+- Add refund and payment reversal workflows.
+- Add stronger integration and performance tests.
+- Improve anomaly reporting with evidence, severity, and recommended investigation actions.
+- Introduce configurable business rules and thresholds.
 
-- Expand controlled anomaly tests to cover all five detection rules.
-- Build a labelled evaluation dataset.
-- Calculate precision, recall, and F1-score against known ground truth.
-- Add stronger data-integrity and integration tests.
-- Improve the reporting of findings with supporting evidence and recommended review actions.
-- Add configurable rule thresholds and business-specific validation policies.
+## 19. Disclaimer
 
-## 16. Disclaimer
+RevenueGuard is a demonstration project for revenue monitoring and anomaly detection.
 
-RevenueGuard is a demonstration project for revenue monitoring and anomaly detection. Its findings are candidates for investigation and should not be treated as definitive evidence of financial loss or misconduct.
+Its findings represent potential business inconsistencies requiring investigation. They should not be treated as definitive evidence of financial loss, fraud, or misconduct.

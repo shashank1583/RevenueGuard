@@ -84,6 +84,14 @@ def connection():
             status TEXT
         );
 
+        CREATE TABLE receivable_adjustments (
+            adjustment_id TEXT PRIMARY KEY,
+            dispute_id TEXT NOT NULL UNIQUE,
+            invoice_id TEXT NOT NULL,
+            adjusted_amount REAL NOT NULL,
+            adjustment_date TEXT NOT NULL
+        );
+
         INSERT INTO invoices VALUES
             ('INV-TEST-001', 'issued', '2026-01-01');
 
@@ -125,6 +133,10 @@ def connection():
     conn.close()
 
 
+# ---------------------------------------------------------
+# RG001: Invoice overbilling
+# ---------------------------------------------------------
+
 def test_detects_invoice_overbilling(connection):
     """RG001: Detect invoice quantities exceeding shipped quantities."""
 
@@ -137,8 +149,12 @@ def test_detects_invoice_overbilling(connection):
     )
 
 
+# ---------------------------------------------------------
+# RG002: Payment overallocation
+# ---------------------------------------------------------
+
 def test_detects_payment_overallocation(connection):
-    """RG002: Detect payment allocations exceeding the payment amount."""
+    """RG002: Detect payment allocations exceeding payment amount."""
 
     findings = detect_payment_overallocation(connection)
 
@@ -148,6 +164,10 @@ def test_detects_payment_overallocation(connection):
         for finding in findings
     )
 
+
+# ---------------------------------------------------------
+# RG003: Closed orders with unpaid invoices
+# ---------------------------------------------------------
 
 def test_detects_closed_orders_with_unpaid_invoices(connection):
     """RG003: Detect closed orders with outstanding invoice balances."""
@@ -175,6 +195,11 @@ def test_detects_closed_orders_with_unpaid_invoices(connection):
 
     assert matching_findings[0]["details"]["outstanding_amount"] == 80.0
 
+
+# ---------------------------------------------------------
+# RG004: Invalid status transitions
+# ---------------------------------------------------------
+
 def test_detects_invalid_status_transition(connection):
     """RG004: Detect status transitions outside the allowed workflow."""
 
@@ -187,14 +212,95 @@ def test_detects_invalid_status_transition(connection):
     )
 
 
-def test_detects_open_disputes(connection):
-    """RG005: Detect open disputes requiring receivables review."""
+# ---------------------------------------------------------
+# RG005: Dispute receivables adjustment validation
+# ---------------------------------------------------------
+
+def test_detects_open_dispute_without_adjustment(connection):
+    """RG005: Detect an active dispute with no receivables adjustment."""
 
     findings = detect_open_disputes(connection)
 
-    assert any(
-        finding["rule_id"] == "RG005"
-        and finding["entity_id"] == "INV-TEST-001"
-        and finding["details"]["dispute_status"] == "open"
+    matching_findings = [
+        finding
         for finding in findings
+        if finding["rule_id"] == "RG005"
+        and finding["entity_id"] == "INV-TEST-001"
+    ]
+
+    assert len(matching_findings) == 1
+
+    assert matching_findings[0]["details"]["dispute_id"] == (
+        "DSP-TEST-001"
     )
+
+    assert matching_findings[0]["details"]["disputed_amount"] == 75.0
+
+    assert matching_findings[0]["details"]["adjusted_amount"] == 0
+
+    assert matching_findings[0]["details"]["dispute_status"] == "open"
+
+
+def test_detects_partially_adjusted_dispute(connection):
+    """RG005: Detect an active dispute with an insufficient adjustment."""
+
+    connection.execute(
+        """
+        INSERT INTO receivable_adjustments (
+            adjustment_id,
+            dispute_id,
+            invoice_id,
+            adjusted_amount,
+            adjustment_date
+        )
+        VALUES (
+            'RA-TEST-001',
+            'DSP-TEST-001',
+            'INV-TEST-001',
+            50.0,
+            '2026-01-02'
+        )
+        """
+    )
+
+    findings = detect_open_disputes(connection)
+
+    matching_findings = [
+        finding
+        for finding in findings
+        if finding["rule_id"] == "RG005"
+        and finding["entity_id"] == "INV-TEST-001"
+    ]
+
+    assert len(matching_findings) == 1
+
+    assert matching_findings[0]["details"]["disputed_amount"] == 75.0
+
+    assert matching_findings[0]["details"]["adjusted_amount"] == 50.0
+
+
+def test_does_not_detect_fully_adjusted_dispute(connection):
+    """RG005: Do not flag a dispute when its full amount is adjusted."""
+
+    connection.execute(
+        """
+        INSERT INTO receivable_adjustments (
+            adjustment_id,
+            dispute_id,
+            invoice_id,
+            adjusted_amount,
+            adjustment_date
+        )
+        VALUES (
+            'RA-TEST-002',
+            'DSP-TEST-001',
+            'INV-TEST-001',
+            75.0,
+            '2026-01-02'
+        )
+        """
+    )
+
+    findings = detect_open_disputes(connection)
+
+    assert findings == []

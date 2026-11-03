@@ -1,0 +1,6 @@
+case_id,rule_id,entity_type,entity_id,scenario,expected_result
+CASE-001,RG001,invoice,INV-2026-000001,Invoice billed quantity exceeds shipped quantity,DETECT
+CASE-002,RG002,payment,PAY-2026-000001,Payment allocations exceed payment amount,DETECT
+CASE-003,RG003,order,SO-2026-000004,Closed order has an outstanding invoice,DETECT
+CASE-004,RG004,order,SO-2026-000006,Invalid order status transition from open to closed,DETECT
+CASE-005,RG005,invoice,INV-2026-001090,Active dispute has no receivables adjustment,DETECT
